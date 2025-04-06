@@ -3,8 +3,11 @@ document.addEventListener('DOMContentLoaded', function () {
   const depositRows = document.getElementById('depositRows');
   const paymentDetailsContainer = document.getElementById('paymentDetailsContainer');
   const additionalPaymentInfo = document.getElementById('additionalPaymentInfo');
+  const exportBtn = document.getElementById('exportBtn');
+  const calculateBtn = document.querySelector('button[onclick="calculateRefund()"]');
+  const addRowBtn = document.querySelector('button[onclick="addDepositRow()"]');
 
-  window.addDepositRow = function () {
+  function addDepositRow() {
     const rowIndex = depositRows.children.length;
     const row = document.createElement('tr');
 
@@ -12,7 +15,7 @@ document.addEventListener('DOMContentLoaded', function () {
       <td><input type="number" step="0.01" class="depositAmount"></td>
       <td><input type="date" class="paymentDate"></td>
       <td>
-        <select class="paymentType" onchange="updatePaymentDetails(this, ${rowIndex})">
+        <select class="paymentType">
           <option value="">-- Select --</option>
           <option value="CASH">Cash</option>
           <option value="BACS">BACS</option>
@@ -21,22 +24,32 @@ document.addEventListener('DOMContentLoaded', function () {
         </select>
       </td>
       <td><input type="text" class="paymentReference"></td>
-      <td><button type="button" onclick="this.closest('tr').remove(); updateTotals()">Remove</button></td>
+      <td><button type="button" class="removeBtn">Remove</button></td>
     `;
 
     depositRows.appendChild(row);
+    bindRowEvents(row, rowIndex);
     updateTotals();
-  };
+  }
 
-  window.updatePaymentDetails = function (selectElem, rowIndex) {
+  function bindRowEvents(row, index) {
+    row.querySelector('.removeBtn').addEventListener('click', function () {
+      row.remove();
+      updateTotals();
+    });
+
+    row.querySelector('.paymentType').addEventListener('change', function () {
+      updatePaymentDetails(this, index);
+    });
+  }
+
+  function updatePaymentDetails(selectElem, rowIndex) {
     const type = selectElem.value;
-    const container = document.getElementById('paymentDetailsContainer');
     const id = `details-${rowIndex}`;
-    let section = document.getElementById(id);
+    const existing = document.getElementById(id);
+    if (existing) existing.remove();
 
-    if (section) section.remove();
-
-    section = document.createElement('div');
+    const section = document.createElement('div');
     section.id = id;
 
     let html = `<h4>Payment Type: ${type}</h4>`;
@@ -63,10 +76,10 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     section.innerHTML = html;
-    container.appendChild(section);
-  };
+    paymentDetailsContainer.appendChild(section);
+  }
 
-  window.calculateRefund = function () {
+  function calculateRefund() {
     const projected = parseFloat(document.getElementById('projectedAmount').value) || 0;
     const invoiced = parseFloat(document.getElementById('invoicedAmount').value) || 0;
     const netTotal = projected + invoiced;
@@ -107,6 +120,9 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('depositTotal').textContent = `£${depositTotal.toFixed(2)}`;
     document.getElementById('refundAmount').textContent = `£${refundDue.toFixed(2)}`;
 
-    document.getElementById('exportBtn').style.display = 'inline-block';
-  };
+    exportBtn.style.display = 'inline-block';
+  }
+
+  if (addRowBtn) addRowBtn.addEventListener('click', addDepositRow);
+  if (calculateBtn) calculateBtn.addEventListener('click', calculateRefund);
 });
