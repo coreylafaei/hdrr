@@ -1,8 +1,18 @@
 
-document.addEventListener('DOMContentLoaded', function () {
+function waitForElement(selector, callback, interval = 100, timeout = 5000) {
+  const start = Date.now();
+  const check = () => {
+    const el = document.querySelector(selector);
+    if (el) return callback(el);
+    if (Date.now() - start >= timeout) return;
+    setTimeout(check, interval);
+  };
+  check();
+}
+
+waitForElement('#refundForm', () => {
   const depositRows = document.getElementById('depositRows');
   const paymentDetailsContainer = document.getElementById('paymentDetailsContainer');
-  const additionalPaymentInfo = document.getElementById('additionalPaymentInfo');
   const exportBtn = document.getElementById('exportBtn');
   const calculateBtn = document.querySelector('button[onclick="calculateRefund()"]');
   const addRowBtn = document.querySelector('button[onclick="addDepositRow()"]');
