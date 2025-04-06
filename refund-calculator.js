@@ -1,41 +1,112 @@
 
-document.addEventListener("DOMContentLoaded", function () {
-    const calcBtn = document.getElementById("calcBtn");
-    const exportBtn = document.getElementById("exportBtn");
+document.addEventListener('DOMContentLoaded', function () {
+  const depositRows = document.getElementById('depositRows');
+  const paymentDetailsContainer = document.getElementById('paymentDetailsContainer');
+  const additionalPaymentInfo = document.getElementById('additionalPaymentInfo');
 
-    if (calcBtn) {
-        calcBtn.addEventListener("click", function () {
-            const deposit = parseFloat(document.getElementById("depositPaid").value);
-            const hire = parseFloat(document.getElementById("hireCost").value);
+  window.addDepositRow = function () {
+    const rowIndex = depositRows.children.length;
+    const row = document.createElement('tr');
 
-            if (isNaN(deposit) || isNaN(hire)) {
-                alert("Please enter both values.");
-                return;
-            }
+    row.innerHTML = `
+      <td><input type="number" step="0.01" class="depositAmount"></td>
+      <td><input type="date" class="paymentDate"></td>
+      <td>
+        <select class="paymentType" onchange="updatePaymentDetails(this, ${rowIndex})">
+          <option value="">-- Select --</option>
+          <option value="CASH">Cash</option>
+          <option value="BACS">BACS</option>
+          <option value="Payment Link">Payment Link</option>
+          <option value="AMEX or Visa Terminal">AMEX or Visa Terminal</option>
+        </select>
+      </td>
+      <td><input type="text" class="paymentReference"></td>
+      <td><button type="button" onclick="this.closest('tr').remove(); updateTotals()">Remove</button></td>
+    `;
 
-            const refund = (deposit - hire).toFixed(2);
-            const result = document.getElementById("result");
-            result.innerHTML = `Refund Due: <strong>£${refund}</strong>`;
+    depositRows.appendChild(row);
+    updateTotals();
+  };
 
-            exportBtn.style.display = "inline-block";
-        });
+  window.updatePaymentDetails = function (selectElem, rowIndex) {
+    const type = selectElem.value;
+    const container = document.getElementById('paymentDetailsContainer');
+    const id = `details-${rowIndex}`;
+    let section = document.getElementById(id);
+
+    if (section) section.remove();
+
+    section = document.createElement('div');
+    section.id = id;
+
+    let html = `<h4>Payment Type: ${type}</h4>`;
+
+    if (type === 'BACS') {
+      html += `
+        <label>Customer Name:</label><input type="text" class="bacsName"><br>
+        <label>Phone:</label><input type="text" class="bacsPhone"><br>
+        <label>Email:</label><input type="email" class="bacsEmail"><br><br>
+      `;
+    } else if (type === 'Payment Link') {
+      html += `
+        <label>Customer Name:</label><input type="text" class="plinkName"><br>
+        <label>Email:</label><input type="email" class="plinkEmail"><br><br>
+      `;
+    } else if (type === 'AMEX or Visa Terminal') {
+      html += `
+        <label>Auth Number:</label><input type="text" class="pdqAuth"><br>
+        <label>Date Obtained:</label><input type="date" class="pdqDate"><br>
+        <label><input type="checkbox" class="pdqRefunded"> Refunded on Terminal</label><br><br>
+      `;
+    } else {
+      html += `<em>No extra details required.</em>`;
     }
 
-    if (exportBtn) {
-        exportBtn.addEventListener("click", function () {
-            const form = document.getElementById("refundForm").cloneNode(true);
-            const resultText = document.getElementById("result").innerHTML;
+    section.innerHTML = html;
+    container.appendChild(section);
+  };
 
-            const result = document.createElement("div");
-            result.innerHTML = resultText;
-            form.appendChild(result);
+  window.calculateRefund = function () {
+    const projected = parseFloat(document.getElementById('projectedAmount').value) || 0;
+    const invoiced = parseFloat(document.getElementById('invoicedAmount').value) || 0;
+    const netTotal = projected + invoiced;
+    const vat = netTotal * 0.2;
+    const totalWithVat = netTotal + vat;
 
-            html2pdf().from(form).set({
-                filename: 'hire-refund-summary.pdf',
-                margin: 10,
-                html2canvas: { scale: 2 },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-            }).save();
-        });
-    }
+    document.getElementById('totalNet').textContent = `£${netTotal.toFixed(2)}`;
+    document.getElementById('vatAmount').textContent = `£${vat.toFixed(2)}`;
+    document.getElementById('totalInclVAT').textContent = `£${totalWithVat.toFixed(2)}`;
+
+    let depositTotal = 0;
+    const depositSummary = [];
+    depositRows.querySelectorAll('tr').forEach(row => {
+      const amount = parseFloat(row.querySelector('.depositAmount').value) || 0;
+      const date = row.querySelector('.paymentDate').value || '';
+      const type = row.querySelector('.paymentType').value || '';
+      const ref = row.querySelector('.paymentReference').value || '';
+
+      depositTotal += amount;
+
+      depositSummary.push(`<tr>
+        <td>£${amount.toFixed(2)}</td>
+        <td>${date}</td>
+        <td>${type}</td>
+        <td>${ref}</td>
+      </tr>`);
+    });
+
+    document.getElementById('depositSummaryTable').innerHTML = `
+      <table border="1" cellpadding="5" cellspacing="0">
+        <thead><tr><th>Amount</th><th>Date</th><th>Type</th><th>Reference</th></tr></thead>
+        <tbody>${depositSummary.join('')}</tbody>
+      </table>
+    `;
+
+    const refundDue = depositTotal - totalWithVat;
+
+    document.getElementById('depositTotal').textContent = `£${depositTotal.toFixed(2)}`;
+    document.getElementById('refundAmount').textContent = `£${refundDue.toFixed(2)}`;
+
+    document.getElementById('exportBtn').style.display = 'inline-block';
+  };
 });
